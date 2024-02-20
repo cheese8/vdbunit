@@ -18,6 +18,7 @@ package com.github.springtestdbunit.dataset;
 
 import static org.junit.Assert.*;
 
+import org.dbunit.dataset.DataSetException;
 import org.dbunit.dataset.IDataSet;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,9 +45,19 @@ public class FlatXmlDataSetLoaderTest {
     }
 
     @Test
-    public void shouldSenseColumns() throws Exception {
+    public void shouldSenseColumnsWithClassRelative() throws Exception {
         IDataSet dataset = this.loader.loadDataSet(this.testContext.getTestClass(), "test-column-sensing.xml");
-        assertEquals(null, dataset.getTable("Sample").getValue(0, "name"));
+        assertDataset(dataset);
+    }
+
+    @Test
+    public void shouldSenseColumnsWithClassPath() throws Exception {
+        IDataSet dataset = this.loader.loadDataSet(this.testContext.getTestClass(), "test-column-sensing-classpath.xml");
+        assertDataset(dataset);
+    }
+
+    private void assertDataset(IDataSet dataset) throws DataSetException {
+        assertNull(dataset.getTable("Sample").getValue(0, "name"));
         assertEquals("test", dataset.getTable("Sample").getValue(1, "name"));
     }
 

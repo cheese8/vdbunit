@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.dbunit.dataset.IDataSet;
 import org.dbunit.dataset.ReplacementDataSet;
+import org.dbunit.dataset.ReplacementFunction;
 import org.springframework.util.Assert;
 
 /**
@@ -25,6 +26,8 @@ public class ReplacementDataSetLoader implements DataSetLoader {
     private final Map<Object, Object> objectReplacements;
 
     private final Map<String, String> subStringReplacements;
+
+    private final Map<String, ReplacementFunction> replacementFunctionMap;
 
     /**
      * Create a new {@link ReplacementDataSetLoader} using a
@@ -53,7 +56,7 @@ public class ReplacementDataSetLoader implements DataSetLoader {
      *                           object replacements are required
      */
     public ReplacementDataSetLoader(DataSetLoader dataSetLoader, Map<?, ?> objectReplacements) {
-	this(dataSetLoader, objectReplacements, null);
+	this(dataSetLoader, objectReplacements, null, null);
     }
 
     /**
@@ -66,11 +69,12 @@ public class ReplacementDataSetLoader implements DataSetLoader {
      *                              no sub-string replacements are required
      */
     public ReplacementDataSetLoader(DataSetLoader dataSetLoader, Map<?, ?> objectReplacements,
-	    Map<String, String> subStringReplacements) {
+	    Map<String, String> subStringReplacements, Map<String, ReplacementFunction> replacementFunctionMap) {
 	Assert.notNull(dataSetLoader, "Delegate must not be null");
 	this.dataSetLoader = dataSetLoader;
 	this.objectReplacements = unmodifiableMap(objectReplacements);
 	this.subStringReplacements = unmodifiableMap(subStringReplacements);
+	this.replacementFunctionMap = replacementFunctionMap;
     }
 
     private <K, V> Map<K, V> unmodifiableMap(Map<? extends K, ? extends V> map) {
@@ -84,7 +88,7 @@ public class ReplacementDataSetLoader implements DataSetLoader {
     public IDataSet loadDataSet(Class<?> testClass, String location) throws Exception {
 	IDataSet dataSet = this.dataSetLoader.loadDataSet(testClass, location);
         return new ReplacementDataSet(dataSet, this.objectReplacements,
-            this.subStringReplacements);
+            this.subStringReplacements, this.replacementFunctionMap);
     }
 
 }

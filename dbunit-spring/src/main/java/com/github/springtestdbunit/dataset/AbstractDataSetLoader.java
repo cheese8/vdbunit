@@ -18,6 +18,7 @@ package com.github.springtestdbunit.dataset;
 
 import org.dbunit.dataset.IDataSet;
 import org.springframework.core.io.ClassRelativeResourceLoader;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 
@@ -49,15 +50,27 @@ public abstract class AbstractDataSetLoader implements DataSetLoader {
      *      String) java.lang.String)
      */
     public IDataSet loadDataSet(Class<?> testClass, String location) throws Exception {
-	ResourceLoader resourceLoader = getResourceLoader(testClass);
-	String[] resourceLocations = getResourceLocations(testClass, location);
-	for (String resourceLocation : resourceLocations) {
-	    Resource resource = resourceLoader.getResource(resourceLocation);
-	    if (resource.exists()) {
-		return createDataSet(resource);
-	    }
-	}
-	return null;
+        Resource resource = getClassRelativeResource(testClass, location);
+        if (resource.exists()) {
+            return createDataSet(resource);
+        }
+        resource = getClasspathResource(location);
+        if (resource.exists()) {
+            return createDataSet(resource);
+        }
+        return null;
+    }
+
+    private Resource getClassRelativeResource(Class<?> testClass, String location) {
+        ResourceLoader resourceLoader = getResourceLoader(testClass);
+        return resourceLoader.getResource(location);
+    }
+
+    private Resource getClasspathResource(String location) {
+        ResourceLoader resourceLoader = new DefaultResourceLoader();
+        String classpathLocation = location.startsWith(ResourceLoader.CLASSPATH_URL_PREFIX) ? location :
+                ResourceLoader.CLASSPATH_URL_PREFIX + location;
+        return resourceLoader.getResource(classpathLocation);
     }
 
     /**
