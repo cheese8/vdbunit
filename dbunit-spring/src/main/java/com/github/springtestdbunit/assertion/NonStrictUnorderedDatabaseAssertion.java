@@ -38,12 +38,12 @@ import org.dbunit.dataset.filter.IColumnFilter;
 class NonStrictUnorderedDatabaseAssertion extends NonStrictDatabaseAssertion {
 
     @Override
-    public void assertEquals(ITable expectedSortedTable, ITable actualSortedTable, List<IColumnFilter> columnFilters)
+    public void assertEquals(ITable expectedSortedTable, ITable actualSortedTable, List<IColumnFilter> columnFilters, List<String> ignoreCols)
 	    throws DatabaseUnitException {
 	Column[] expectedColumns = expectedSortedTable.getTableMetaData().getColumns();
 	expectedSortedTable = new SortedTable(expectedSortedTable, expectedColumns);
 	actualSortedTable = new SortedTable(actualSortedTable, expectedColumns);
-	super.assertEquals(expectedSortedTable, actualSortedTable, columnFilters);
+	super.assertEquals(expectedSortedTable, actualSortedTable, columnFilters, ignoreCols);
     }
 
 }

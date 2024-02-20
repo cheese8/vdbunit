@@ -19,11 +19,9 @@ package com.github.springtestdbunit;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+import com.github.springtestdbunit.annotation.*;
 import org.dbunit.DatabaseUnitException;
 import org.dbunit.database.AbstractDatabaseConnection;
 import org.dbunit.database.FullyLoadedTable;
@@ -41,10 +39,6 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-import com.github.springtestdbunit.annotation.DatabaseOperation;
-import com.github.springtestdbunit.annotation.DatabaseSetup;
-import com.github.springtestdbunit.annotation.DatabaseTearDown;
-import com.github.springtestdbunit.annotation.ExpectedDatabase;
 import com.github.springtestdbunit.assertion.DatabaseAssertion;
 import com.github.springtestdbunit.dataset.DataSetLoader;
 import com.github.springtestdbunit.dataset.DataSetModifier;
@@ -105,18 +99,18 @@ public class DbUnitRunner {
         DataSetModifier modifier = getModifier(testInstance, annotations); // Not sure why modifiers are combined
         boolean override = false;
         for (ExpectedDatabase annotation : annotations.getMethodAnnotations()) {
-            verifyExpected(dataSetLoader, testClass, dbunitTestContext, modifier, annotation);
+            verifyExpected(dataSetLoader, testClass, dbunitTestContext, modifier, annotation, testMethod);
             override |= annotation.override();
         }
         if (!override) {
             for (ExpectedDatabase annotation : annotations.getClassAnnotations()) {
-                verifyExpected(dataSetLoader, testClass, dbunitTestContext, modifier, annotation);
+                verifyExpected(dataSetLoader, testClass, dbunitTestContext, modifier, annotation, testMethod);
             }
         }
     }
 
     private void verifyExpected(DataSetLoader dataSetLoader, Class<?> testClass, TestContext dbunitTestContext,
-            DataSetModifier modifier, ExpectedDatabase annotation)
+            DataSetModifier modifier, ExpectedDatabase annotation, Method testMethod)
             throws Exception, SQLException, DatabaseUnitException {
         String query = annotation.query();
         String table = annotation.table();
@@ -124,7 +118,8 @@ public class DbUnitRunner {
         AbstractDatabaseConnection connection = dbunitTestContext.getConnection(annotation.connection());
         if (expectedDataSet != null) {
             DatabaseAssertion assertion = annotation.assertionMode().getDatabaseAssertion();
-            List<IColumnFilter> columnFilters = getColumnFilters(annotation);
+            List<IColumnFilter> columnFilters = getColumnFilters(testClass, testMethod, annotation);
+            List<String> ignoredColumns = getIgnoredColumns(annotation);
             if (StringUtils.hasLength(table)) {
                 ITable expectedTable = expectedDataSet.getTable(table);
                 ResultSetTable resultSetTable;
@@ -134,11 +129,11 @@ public class DbUnitRunner {
                     resultSetTable = connection.loadTableResultSet(table);
                 }
                 FullyLoadedTable actualTable = new FullyLoadedTable(resultSetTable);
-                assertion.assertEquals(expectedTable, actualTable, columnFilters);
+                assertion.assertEquals(expectedTable, actualTable, columnFilters, ignoredColumns);
             } else {
                 // whole database compare !? Wonder the use of this
                 IDataSet actualDataSet = connection.createDataSet();
-                assertion.assertEquals(expectedDataSet, actualDataSet, columnFilters);
+                assertion.assertEquals(expectedDataSet, actualDataSet, columnFilters, ignoredColumns);
             }
         }
     }
@@ -212,6 +207,52 @@ public class DbUnitRunner {
             columnFilters.add(columnFilterClass.getDeclaredConstructor().newInstance());
         }
         return columnFilters;
+    }
+
+    private List<IColumnFilter> getColumnFilters(Class<?> testClass, Method testMethod, ExpectedDatabase annotation) throws Exception {
+        List<Class<? extends IColumnFilter>> fromDbUnitConfiguration = getColumnFiltersFromDbUnitConfiguration(testClass, testMethod);
+        Class<? extends IColumnFilter>[] fromExpectedDatabase = getColumnFiltersFromExpectedDatabase(annotation);
+        Class<? extends IColumnFilter>[] columnFilterClasses = mergeDistinct(fromDbUnitConfiguration, fromExpectedDatabase);
+        List<IColumnFilter> columnFilters = new LinkedList<>();
+        for (Class<? extends IColumnFilter> columnFilterClass : columnFilterClasses) {
+            columnFilters.add(columnFilterClass.getDeclaredConstructor().newInstance());
+        }
+        return columnFilters;
+    }
+
+    private Class<? extends IColumnFilter>[] getColumnFiltersFromExpectedDatabase(ExpectedDatabase annotation) {
+        Class<? extends IColumnFilter>[] columnFilterClasses = annotation.columnFilters();
+        if (logger.isDebugEnabled()) {
+            logger.debug("Found columnFilters on @ExpectedDatabase configuration");
+        }
+        return columnFilterClasses;
+    }
+
+    private List<Class<? extends IColumnFilter>> getColumnFiltersFromDbUnitConfiguration(Class<?> testClass, Method testMethod) {
+        List<Class<? extends IColumnFilter>> columnFilterClasses = new LinkedList<>();
+        Annotations<DbUnitConfiguration> annotations = new Annotations<>(testClass, testMethod, DbUnitConfiguration.class);
+        if (annotations != null) {
+            for (DbUnitConfiguration annotation : annotations) {
+                for (Class<? extends IColumnFilter> clazz : annotation.columnFilters()) {
+                    columnFilterClasses.add(clazz);
+                }
+            }
+            if (logger.isDebugEnabled()) {
+                logger.debug("Found columnFilters on @DbUnitConfiguration configuration");
+            }
+        }
+        return columnFilterClasses;
+    }
+
+    private List<String> getIgnoredColumns(ExpectedDatabase annotation) {
+        return Arrays.asList(annotation.ignoreCols());
+    }
+
+    private Class<? extends IColumnFilter>[] mergeDistinct(List<Class<? extends IColumnFilter>> first, Class<? extends IColumnFilter>[] second) {
+        Set<Class<? extends IColumnFilter>> result = new HashSet<>();
+        result.addAll(first);
+        result.addAll(Arrays.asList(second));
+        return result.toArray(new Class[0]);
     }
 
     private org.dbunit.operation.DatabaseOperation getDbUnitDatabaseOperation(

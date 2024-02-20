@@ -39,7 +39,7 @@ public interface DatabaseAssertion {
      * @param columnFilters   any column filters to apply
      * @throws DatabaseUnitException if the datasets are not equal
      */
-    void assertEquals(IDataSet expectedDataSet, IDataSet actualDataSet, List<IColumnFilter> columnFilters)
+    void assertEquals(IDataSet expectedDataSet, IDataSet actualDataSet, List<IColumnFilter> columnFilters, List<String> ignoredColumns)
 	    throws DatabaseUnitException;
 
     /**
@@ -50,7 +50,7 @@ public interface DatabaseAssertion {
      * @param columnFilters any column filters to apply
      * @throws DatabaseUnitException if the tables are not equal
      */
-    void assertEquals(ITable expectedTable, ITable actualTable, List<IColumnFilter> columnFilters)
+    void assertEquals(ITable expectedTable, ITable actualTable, List<IColumnFilter> columnFilters, List<String> ignoredColumns)
 	    throws DatabaseUnitException;
 
 }
