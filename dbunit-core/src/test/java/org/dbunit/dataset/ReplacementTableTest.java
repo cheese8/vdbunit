@@ -124,6 +124,73 @@ public class ReplacementTableTest extends AbstractTableTest {
         Assertion.assertEquals(expectedTable, actualTable);
     }
 
+    @Test
+    public void testFunctionReplacement() throws Exception
+    {
+        String tableName = "TABLE_NAME";
+        BigDecimal trueObject = new BigDecimal((double)1);
+        BigDecimal falseObject = new BigDecimal((double)0);
+        Date now = new Date(System.currentTimeMillis());
+
+        Column[] columns = new Column[] {
+                new Column("BOOLEAN_TRUE", DataType.BOOLEAN),
+                new Column("BOOLEAN_FALSE", DataType.BOOLEAN),
+                new Column("STRING_TRUE", DataType.CHAR),
+                new Column("STRING_FALSE", DataType.CHAR),
+                new Column("STRING_VALUE", DataType.CHAR),
+                new Column("DATE_VALUE", DataType.DATE),
+                new Column("NULL_TO_STRING_VALUE", DataType.CHAR),
+                new Column("STRING_TO_NULL_VALUE", DataType.CHAR),
+                new Column("STRING_VALUE", DataType.CHAR)
+        };
+
+        // Setup actual table
+        Object[] actualRow = new Object[] {
+                Boolean.TRUE,
+                Boolean.FALSE,
+                Boolean.TRUE.toString(),
+                Boolean.FALSE.toString(),
+                "value",
+                "now",
+                null,
+                "null",
+                "[add()]"
+        };
+
+        DefaultTable originalTable = new DefaultTable(tableName, columns);
+        originalTable.addRow(actualRow);
+        ReplacementTable actualTable = new ReplacementTable(originalTable);
+        actualTable.addReplacementObject(Boolean.TRUE, trueObject);
+        actualTable.addReplacementObject(Boolean.FALSE, falseObject);
+        actualTable.addReplacementObject("now", now);
+        actualTable.addReplacementObject("null", null);
+        actualTable.addReplacementObject(null, "nullreplacement");
+        actualTable.addReplacementFunction("add", new ReplacementFunction() {
+            @Override
+            public String evaluate(String parameter) throws DataSetException {
+                return "123";
+            }
+        });
+
+        // Setup expected table
+        Object[] expectedRow = new Object[] {
+                trueObject,
+                falseObject,
+                Boolean.TRUE.toString(),
+                Boolean.FALSE.toString(),
+                "value",
+                now,
+                "nullreplacement",
+                null,
+                "123"
+        };
+
+        DefaultTable expectedTable = new DefaultTable(tableName, columns);
+        expectedTable.addRow(expectedRow);
+
+        Assertion.assertEquals(expectedTable, actualTable);
+    }
+
     /**
      * Tests that replacement will fail properly when strict replacement fails.
      */

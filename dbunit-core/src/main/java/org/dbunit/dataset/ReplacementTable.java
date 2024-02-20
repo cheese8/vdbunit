@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Decorator that replaces configured values from the decorated table with
@@ -49,21 +51,25 @@ public class ReplacementTable implements ITable {
     private String _endDelim;
     private boolean _strictReplacement;
 
+    private Map<Object, ReplacementFunction> _functionMap;
+    private final static String regex = "\\[(.*)\\((.*)\\)\\]";
+    private final static Pattern pattern = Pattern.compile(regex);
     /**
      * Create a new ReplacementTable object that decorates the specified table.
      *
      * @param table the decorated table
      */
     public ReplacementTable(ITable table) {
-        this(table, new HashMap(), new HashMap(), null, null);
+        this(table, new HashMap(), new HashMap(), new HashMap(), null, null);
     }
 
-    public ReplacementTable(ITable table, Map objectMap, Map substringMap, String startDelimiter, String endDelimiter) {
+    public ReplacementTable(ITable table, Map objectMap, Map substringMap, Map functionMap, String startDelimiter, String endDelimiter) {
         _table = table;
         _objectMap = objectMap;
         _substringMap = substringMap;
         _startDelim = startDelimiter;
         _endDelim = endDelimiter;
+        _functionMap = new HashMap();
     }
 
     /**
@@ -122,6 +128,19 @@ public class ReplacementTable implements ITable {
 
         _startDelim = startDelimiter;
         _endDelim = endDelimiter;
+    }
+
+    /**
+     * Add a new function replacement mapping.
+     *
+     * @param originalObject the object to replace
+     * @param replacementFunction the replacement function
+     */
+    public void addReplacementFunction(Object originalObject, ReplacementFunction replacementFunction)
+    {
+        logger.debug("addReplacementFunction(originalObject={}, replacementFunction={}) - start", originalObject, replacementFunction);
+
+        _functionMap.put(originalObject, replacementFunction);
     }
 
     /**
@@ -222,16 +241,28 @@ public class ReplacementTable implements ITable {
             return _objectMap.get(value);
         }
 
-        // Stop here if substring replacement not applicable
-        if (_substringMap.size() == 0 || !(value instanceof String)) {
-            return value;
+        if (value instanceof String) {
+            // Function replacement
+            String valueStr = (String) value;
+            Matcher m = pattern.matcher(valueStr);
+            if (!m.find()) {
+                // Substring replacement
+                if (_startDelim != null && _endDelim != null)
+                {
+                    return replaceDelimitedSubstrings(valueStr);
+                }
+                return replaceSubstrings((String)value);
+            } else {
+                String functionName = m.group(1);
+                String parameter = m.group(2);
+                if (_functionMap.containsKey(functionName)) {
+                    return _functionMap.get(functionName).evaluate(parameter);
+                } else {
+                    throw new DataSetException("ReplacementFunction " + functionName + " was not registered.");
+                }
+            }
         }
-
-        // Substring replacement
-        if (_startDelim != null && _endDelim != null) {
-            return replaceDelimitedSubstrings((String) value);
-        }
-        return replaceSubstrings((String) value);
+        return value;
     }
 
     public String toString() {

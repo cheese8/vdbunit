@@ -44,6 +44,7 @@ public class ReplacementDataSet extends AbstractDataSet {
     private final IDataSet _dataSet;
     private final Map _objectMap;
     private final Map _substringMap;
+    private final Map _functionMap;
     private String _startDelim;
     private String _endDelim;
     private boolean _strictReplacement;
@@ -54,7 +55,7 @@ public class ReplacementDataSet extends AbstractDataSet {
      * @param dataSet the decorated table
      */
     public ReplacementDataSet(IDataSet dataSet) {
-        this(dataSet, new HashMap(), new HashMap());
+        this(dataSet, new HashMap(), new HashMap(), new HashMap());
     }
 
     /**
@@ -64,11 +65,12 @@ public class ReplacementDataSet extends AbstractDataSet {
      * @param objectMap    the replacement objects mapping
      * @param substringMap the replacement substrings mapping
      */
-    public ReplacementDataSet(IDataSet dataSet, Map objectMap, Map substringMap) {
+    public ReplacementDataSet(IDataSet dataSet, Map objectMap, Map substringMap, Map functionMap) {
         super(dataSet.isCaseSensitiveTableNames());
         _dataSet = dataSet;
         _objectMap = objectMap == null ? new HashMap() : objectMap;
         _substringMap = substringMap == null ? new HashMap() : substringMap;
+        _functionMap = functionMap == null ? new HashMap() : functionMap;
     }
 
     /**
@@ -112,6 +114,19 @@ public class ReplacementDataSet extends AbstractDataSet {
     }
 
     /**
+     * Add a new function replacement mapping.
+     *
+     * @param originalObject the object to replace
+     * @param replacementFunction the replacement function
+     */
+    public void addReplacementFunction(String originalObject, ReplacementFunction replacementFunction)
+    {
+        logger.debug("addReplacementFunction(originalObject={}, replacementFunction={}) - start", originalObject, replacementFunction);
+
+        _functionMap.put(originalObject, replacementFunction);
+    }
+
+    /**
      * Sets substring delimiters.
      */
     public void setSubstringDelimiters(String startDelimiter, String endDelimiter) {
@@ -129,7 +144,7 @@ public class ReplacementDataSet extends AbstractDataSet {
     private ReplacementTable createReplacementTable(ITable table) {
         logger.debug("createReplacementTable(table={}) - start", table);
 
-        ReplacementTable replacementTable = new ReplacementTable(table, _objectMap, _substringMap, _startDelim,
+        ReplacementTable replacementTable = new ReplacementTable(table, _objectMap, _substringMap, _functionMap, _startDelim,
                 _endDelim);
         replacementTable.setStrictReplacement(_strictReplacement);
         return replacementTable;

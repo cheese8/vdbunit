@@ -44,7 +44,7 @@ public class CsvDataFileLoader extends AbstractDataFileLoader {
     /**
      * Create new instance with replacement objects.
      * 
-     * @param replacementObjects The replacement objects for use with
+     * @param ro The replacement objects for use with
      *                           {@link org.dbunit.dataset.ReplacementDataSet}.
      */
     public CsvDataFileLoader(Map ro) {
@@ -59,8 +59,8 @@ public class CsvDataFileLoader extends AbstractDataFileLoader {
      * @param rs The replacement substrings for use with
      *           {@link org.dbunit.dataset.ReplacementDataSet}.
      */
-    public CsvDataFileLoader(Map ro, Map rs) {
-        super(ro, rs);
+    public CsvDataFileLoader(Map ro, Map rs, Map rf) {
+        super(ro, rs, rf);
     }
 
     /**
